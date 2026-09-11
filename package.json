@@ -1,0 +1,11 @@
+{
+  "name": "warium-ballistics",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Warium calculator with a read-only temporary BlueMap viewer",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-ballistics.js && node test-mission.js && node test-aiming.js && node --test test-map-server.js test-map-adapter.js"
+  }
+}

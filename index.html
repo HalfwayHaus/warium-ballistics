@@ -157,14 +157,15 @@
                 </div>
                 <div class="map-actions">
                     <button id="connect-map" type="button">Connect map</button>
+                    <button id="fit-map" type="button" disabled>Fit trajectories</button>
                     <button id="disconnect-map" type="button">Disconnect</button>
                     <button id="download-markers" type="button" disabled>Export markers</button>
                     <a id="open-map" target="_blank" rel="noopener noreferrer" hidden>Open map separately</a>
                 </div>
-                <p id="map-status" role="status">Paste a BlueMap link. Live overlays require the map owner’s bridge script.</p>
-                <iframe id="bluemap-frame" title="BlueMap firing trajectories" referrerpolicy="no-referrer" hidden></iframe>
-                <details><summary>Enable live overlays</summary>
-                    <p>The map owner installs <a href="bluemap-bridge.js" download>bluemap-bridge.js</a>, allows this calculator’s origin, and registers the script in BlueMap. See <a href="BLUEMAP.md">setup instructions</a>. The map server must allow embedding. No terrain or collision data is read from the map.</p>
+                <p id="map-status" role="status">Paste a public BlueMap link to view a temporary copy with your trajectories. No map-owner installation is needed.</p>
+                <iframe id="bluemap-frame" title="Temporary BlueMap with firing trajectories" sandbox="allow-scripts allow-pointer-lock" referrerpolicy="no-referrer" hidden></iframe>
+                <details><summary>How the temporary map works</summary>
+                    <p>The calculator loads public map files as you explore and draws trajectories only in your temporary viewer. The original map is unchanged. Closing the viewer clears your overlay. Private maps that need a login are not supported. <a href="BLUEMAP.md">Map service instructions</a>.</p>
                 </details>
             </section>
             <details class="model-details">

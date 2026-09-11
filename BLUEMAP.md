@@ -1,32 +1,65 @@
-# BlueMap overlays
+# Temporary BlueMap viewer
 
-## Ironfall check (2026-09-11)
+Paste a public BlueMap link into the calculator to open an interactive, temporary copy and draw firing solutions on it. The BlueMap owner does not install a script, enable CORS or edit the original map. Trajectories exist only in your calculator viewer.
 
-The supplied `http://ironfall.org/bluemap/#world:2362:0:-19:1500:0:0:0:1:flat` link serves BlueMap **5.12-mc1.20-6**. Its `settings.json` lists the `world` map and an empty `scripts` array. The map loads in the local calculator's iframe, but the live bridge handshake times out because the bridge is not installed. The HTTP response has no CSP or X-Frame-Options header. HTTPS verification failed with a certificate hostname mismatch for `ironfall.org`. The server owner must install the bridge; for an HTTPS-hosted calculator, also repair HTTPS on the map. No remote server configuration was changed.
+## For players
 
-The calculator accepts an HTTP(S) BlueMap URL, including its path and view fragment. A cross-origin iframe cannot directly access BlueMap's renderer. Install the included bridge once on a BlueMap server you administer to enable live trajectories.
+1. Open the calculator on a host running its map service.
+2. Paste the full BlueMap web page URL, including any map/view fragment, and select **Connect map**.
+3. Confirm the automatically filled map ID matches the world/dimension of your firing coordinates.
+4. Calculate. The viewer centers on the valid trajectories. Green is the low arc, amber the high arc, and blue marks cluster release. Bomblet paths and sample landing crosses also appear for cluster Ordinance.
+5. Pan, rotate or zoom using BlueMap's controls. The lines use world coordinates and move with the map. **Fit trajectories** brings the shot back into view.
 
-## Map-owner setup
+Editing firing inputs clears the old overlay until you recalculate. Changing the map dimension clears it too; update the map ID only when your coordinates belong to that world. **Disconnect** removes the overlay, unloads the map and closes the server session. Sessions also expire after 30 minutes without resource requests. Reloading or restarting the service creates a new session.
 
-1. Copy `bluemap-bridge.js` into BlueMap's web root, for example `bluemap/web/js/warium-ballistics.js`.
-2. Edit `ALLOWED_ORIGINS` at the top of that copy. Add the exact origin serving your calculator, such as `https://halfwayhaus.github.io`. An origin includes scheme, hostname and non-default port, but no path or trailing slash. The bundled localhost origin is only for local development. Do not use `*` or `null`.
-3. Add `"js/warium-ballistics.js"` to the existing `scripts` list in BlueMap's `webapp.conf`; preserve other scripts. Reload BlueMap's configuration/webapp.
-4. Permit the calculator origin in the map server's `Content-Security-Policy: frame-ancestors` configuration if embedding is restricted. A conflicting `X-Frame-Options` header can also block embedding. CORS alone does not permit framing or renderer access. Use HTTPS for both sites when the calculator uses HTTPS.
-5. Open the calculator over HTTP(S), paste the map URL, and select **Connect map**. The current BlueMap map ID is filled automatically. Verify that it is the world/dimension used for your entered coordinates.
-6. Calculate a solution. Wait for **Trajectories drawn on BlueMap**. The bridge draws native 3D line markers, so they stay registered to world coordinates as you pan, rotate or zoom. Green is the low arc, amber the high arc, blue crosses mark cluster release. Thin lines and impact crosses show representative bomblets. Markers are local to that browser session and replace the previous solution.
+Invalid Aimer pitch/yaw arcs are excluded. Nominal paths do not detect terrain or obstructions. Cluster paths are representative samples, not predictions of a particular random shot. The underlying public map's terrain and freshness determine what terrain you see.
 
-Changing calculator inputs clears the old overlay. Changing the BlueMap dimension clears it too; update the map ID and recalculate only when your coordinates belong to the newly selected world. **Disconnect** removes the overlay and unloads the frame.
+## Run locally
 
-Opening `index.html` directly still supports offline calculations, charts and exports. A file URL has an opaque origin and is deliberately not accepted by the bridge. Serve the folder with a static server for live BlueMap integration; e.g. `python -m http.server 8765 --bind 127.0.0.1`, then visit `http://127.0.0.1:8765`.
+Install Node.js 22 or newer. Double-click `launch-with-bluemap.cmd`, or run the following in the repository folder:
 
-## Without the bridge
+```sh
+npm start
+```
 
-The map may be viewable, but no overlay is claimed until the bridge acknowledges it. **Export markers** downloads JSON with `mapId` and `markerSet`. The latter uses BlueMap's line-marker data schema and can be consumed by a server-owner integration. This download does not automatically install markers, and is not a drop-in `webapp.conf` or entire `markers.json` replacement.
+Open `http://127.0.0.1:8765`. There are no npm dependencies to install. Keep the terminal running while using the map. Set `PORT` if another program is using 8765.
 
-## Protocol and security
+Opening `index.html` directly, or running a static file server, still supports calculations, charts and **Export markers**. Loading a temporary map requires `server.js`.
 
-The bridge checks the sender origin, parent window, connection token, map ID, line-only schema, finite coordinates and total point count. It does not accept scripts, HTML, arbitrary marker types or links from the calculator. The calculator checks the map's origin, frame window and connection token before accepting replies. No proxy or map-server credentials are needed. Submitted coordinates and trajectories are sent only to the connected map frame.
+## Host the calculator for players
 
-Compatibility is based on BlueMap's exposed `window.BlueMap.MarkerSet` and `window.bluemap.mapViewer.markers` APIs. Servers that customize or remove these exports require an adapter. Integration tests exercise the message protocol with a stub renderer; a live server check is still needed for a particular installed BlueMap version and framing policy.
+Run `node server.js` on a Node-capable host and route the calculator's public HTTPS origin to it. Serve this app at the origin root, including `/api/bluemap/` and `/mirror/`. Set:
 
-Sources: [BlueMap webapp configuration](https://bluemap.bluecolored.de/wiki/configs/Webapp.html), [custom scripts](https://bluemap.bluecolored.de/community/Customisation.html), [MarkerSet source](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/markers/MarkerSet.js), [LineMarker source](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/markers/LineMarker.js).
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | Listen on the host/container network interface. Default is local-only `127.0.0.1`. |
+| `PORT` | `8765` | Internal listening port, or the port assigned by the hosting platform. |
+| `PUBLIC_ORIGIN` | `https://calculator.example.com` | Exact public calculator origin. Configure the reverse proxy to preserve this Host header. |
+
+The host needs outbound access to public HTTP(S) map resources. TLS for the calculator is normally terminated by the hosting platform or reverse proxy. An HTTP-only BlueMap can be used from an HTTPS calculator because the browser requests the copied resources through the calculator's HTTPS origin.
+
+**GitHub Pages cannot run Node.** Pushing this repository to Pages updates its offline/static calculator but does not activate temporary maps there. Host this app with the included service and point players to that URL. No player-side installation is needed on a hosted instance.
+
+Session and cache state are in one process's memory. Use one instance, or sticky routing if deploying multiple instances. The service permits up to 32 active sessions and 48 concurrent upstream resource fetches, with a 64 MB cache, 30-second cache lifetime, 24 MB per-resource limit and 20-second request deadline. Size the calculator host's bandwidth for the number of players exploring maps; only requested tiles are fetched, never an entire world download.
+
+## How it works
+
+The calculator creates a random session under `/mirror/<session>/`. The service fetches the public BlueMap entry page, versioned renderer assets and map data as needed. It rewrites map-data roots to that temporary route and inserts `map-adapter.js` into the copied HTML. Nothing is uploaded to BlueMap.
+
+The copied webapp runs in a sandboxed iframe without the calculator's origin or persistent storage. Its adapter receives trajectory data through a parent-window and channel-checked message protocol, then creates native BlueMap line markers. It reserves this local marker set so normal upstream marker polling cannot remove the solution. Other map users never see these trajectories.
+
+The relay sends read-only GET requests without upstream login cookies or credentials. Local/private network addresses are rejected, DNS results are validated and pinned to the connection, and resource paths stay within the configured map roots. Mirrored documents retain a sandbox even when opened in another tab. The viewer cannot read the calculator's cookies or storage. BlueMap's expected storage interface is emulated in memory for that frame only.
+
+The calculator host sees the supplied map URL and requested resource paths; the map host sees ordinary public asset/tile requests from the calculator host. Trajectory coordinates travel to the embedded viewer. Exploring/fitting the view also requests tiles around those coordinates. Owner-configured extra scripts/styles are disabled in this temporary copy; the original map and its customization remain unchanged.
+
+## Compatibility and verification
+
+Verified on 2026-09-11 with the supplied [Ironfall BlueMap](http://ironfall.org/bluemap/#world:2362:0:-19:1500:0:0:0:1:flat), reporting **5.12-mc1.20-6**. Its settings still contain an empty `scripts` array. The temporary viewer loads terrain and displays world-aligned firing markers without any map-owner changes. Use its working HTTP URL; its HTTPS endpoint currently reports a certificate hostname mismatch, which the service does not ignore.
+
+Compatibility uses BlueMap's exposed `window.BlueMap.MarkerSet`, `window.bluemap.mapViewer.markers` and controls APIs. Standard BlueMap webapps with relative asset URLs are supported. Older versions, heavily customized HTML, authentication gates, anti-bot checks, different renderer exports or oversized assets may need further adaptation. A private map requiring login is not supported. The UI reports connection/drawing failures instead of claiming an overlay is present.
+
+Tests cover session creation/removal/expiry, resource routing/caching, read-only requests, private-address/path restrictions, sandbox headers, origin/channel/schema checks, dimension changes, camera fitting and persistence through upstream marker refreshes. The live browser check also verifies visible terrain and markers.
+
+**Export markers** remains available offline. The JSON contains `mapId` and a BlueMap-compatible `markerSet`; exporting is optional and does not write anything to a server.
+
+References: [BlueMap webapp source](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/BlueMapApp.js), [MarkerSet](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/markers/MarkerSet.js), [normal marker refresh](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/markers/NormalMarkerManager.js), [line markers](https://github.com/BlueMap-Minecraft/BlueMap/blob/master/common/webapp/src/js/markers/LineMarker.js).
