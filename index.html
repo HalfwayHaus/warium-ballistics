@@ -9,7 +9,7 @@
 <body>
     <header class="app-header">
         <div>
-            <p class="eyebrow">WARIUM 1.3.0</p>
+            <p class="eyebrow">WARIUM 1.3.2</p>
             <h1>Ballistics Calculator</h1>
         </div>
         <div class="runtime-state" id="runtime-state">RPL 2.1.1 profile</div>
@@ -32,8 +32,33 @@
                         Barrel blocks
                         <input id="barrels" name="barrels" type="number" min="1" max="11" step="1" value="4">
                     </label>
+                    <label>Launcher facing
+                        <select id="launcher-facing" name="launcherFacing">
+                            <option value="auto">Recommend nearest cardinal facing</option>
+                            <option value="north">North (−Z)</option>
+                            <option value="east">East (+X)</option>
+                            <option value="south">South (+Z)</option>
+                            <option value="west">West (−X)</option>
+                            <option value="custom">Custom / rotated base</option>
+                        </select>
+                    </label>
+                    <label id="base-yaw-row" hidden>Base world yaw (before Aimer adjustment)
+                        <input id="base-yaw" name="baseYaw" type="number" min="-180" max="180" step="any" value="0">
+                    </label>
+                    <p class="field-note">Aimer yaw is relative to the launcher’s forward direction, limited to ±30.5°. Pitch range: −21.5° to +44.5°. Match the recommended facing in game, or select your actual facing. Use custom for a rotated mount.</p>
                 </section>
 
+                <section class="form-section" id="ordinance-options" hidden>
+                    <h2>Ordinance launch setup</h2>
+                    <label>Launch mount<select id="launch-mode" name="launchMode">
+                        <option value="horizontal">Horizontal mount — solve elevation</option>
+                        <option value="vertical">Vertical / floor mount — fixed vector</option>
+                    </select></label>
+                    <label id="vertical-vector-row" hidden>Retained horizontal vector magnitude
+                        <input id="vertical-vector" name="verticalVector" type="number" value="1" min="0" max="10" step="any">
+                    </label>
+                    <p class="field-note">Floor mounts force vertical component 1.5 and retain X/Z. Default magnitude 1 gives 56.31° elevation. Use √(X² + Z²) from your setup; 0 is straight up. Results assume no guidance lock.</p>
+                </section>
                 <section class="form-section">
                     <h2>Projectile Runtime</h2>
                     <div class="segmented" role="radiogroup" aria-label="Projectile runtime">
@@ -119,25 +144,50 @@
                 <canvas id="trajectory" width="1000" height="400"></canvas>
             </section>
 
+            <section class="trajectory-section" id="cluster-section" hidden>
+                <h2>Cluster release &amp; bomblets</h2>
+                <p>Release at tick 31 (1.55 s). Each of the eight bomblets receives random spread 12 around the mother’s velocity. Paths below are a reproducible sample, not exact future shots. Landing estimates use the target’s Y as a flat plane.</p>
+                <div id="cluster-results"></div>
+            </section>
+            <section class="trajectory-section" aria-label="BlueMap integration">
+                <h2>BlueMap</h2>
+                <div class="map-controls">
+                    <label>BlueMap link<input id="bluemap-url" type="url" placeholder="https://map.example.com/#world:…"></label>
+                    <label>Map ID (filled on connection)<input id="bluemap-id" type="text" placeholder="world"></label>
+                </div>
+                <div class="map-actions">
+                    <button id="connect-map" type="button">Connect map</button>
+                    <button id="disconnect-map" type="button">Disconnect</button>
+                    <button id="download-markers" type="button" disabled>Export markers</button>
+                    <a id="open-map" target="_blank" rel="noopener noreferrer" hidden>Open map separately</a>
+                </div>
+                <p id="map-status" role="status">Paste a BlueMap link. Live overlays require the map owner’s bridge script.</p>
+                <iframe id="bluemap-frame" title="BlueMap firing trajectories" referrerpolicy="no-referrer" hidden></iframe>
+                <details><summary>Enable live overlays</summary>
+                    <p>The map owner installs <a href="bluemap-bridge.js" download>bluemap-bridge.js</a>, allows this calculator’s origin, and registers the script in BlueMap. See <a href="BLUEMAP.md">setup instructions</a>. The map server must allow embedding. No terrain or collision data is read from the map.</p>
+                </details>
+            </section>
             <details class="model-details">
                 <summary>Calculation model</summary>
                 <div class="details-grid">
                     <p><strong>Motion:</strong> Minecraft 1.20.1 AbstractArrow order, with position advanced before 0.99 air drag and 0.05 downward velocity are applied each tick.</p>
                     <p><strong>RPL:</strong> Warium doubles battle-cannon and artillery launch velocity when Ritchie's Projectile Library is loaded. Mortar launch speed remains 5 blocks/tick.</p>
                     <p><strong>Mortars:</strong> The displayed mortar pitch is solved through Warium's actual transformed launch vector. A 0-degree mortar setting produces approximately 45 degrees of true elevation when fired on its centerline.</p>
-                    <p><strong>Error:</strong> CEP50 and 90% miss radius use 800 deterministic trials of Minecraft's triangular projectile spread at the selected barrel or mortar inaccuracy.</p>
+                    <p><strong>Error:</strong> Median and 90th-percentile miss at the vertical target plane use 800 deterministic trials of Minecraft's triangular projectile spread at the selected launch inaccuracy, including a second random perturbation for cluster bomblets. These are not horizontal ground-impact radii.</p>
                     <p><strong>Coordinates:</strong> One block is treated as one meter. VS local coordinates must be converted to world coordinates.</p>
-                    <p><strong>Limits:</strong> Terrain, collision, vehicle motion, server lag, and mount rotation limits are not modeled. Error figures are statistical estimates, not guarantees for an individual shot.</p>
+                    <p><strong>Aimer limits:</strong> Yaw ±30.5°, pitch −21.5° to +44.5°. Out-of-range arcs require changed firing inputs and are not mapped. Control settings use 0.5° steps; charts show the exact nominal path. Terrain, collisions, vehicle motion and extra mount restrictions are not modeled.</p>
                 </div>
             </details>
         </section>
     </main>
 
     <footer>
-        Derived from Warium 1.3.0 and Ritchie's Projectile Library 2.1.1 for Minecraft 1.20.1.
+        Derived from Warium 1.3.2 and Ritchie's Projectile Library 2.1.1 for Minecraft 1.20.1.
     </footer>
 
     <script src="ballistics.js"></script>
+    <script src="mission.js"></script>
+    <script src="bluemap.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

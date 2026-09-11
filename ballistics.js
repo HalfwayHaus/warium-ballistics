@@ -15,6 +15,17 @@
     const DISPERSION_SAMPLES = 800;
 
     const WEAPONS = {
+        ordinance: { name: "Ordinance missile", usesBarrels: false, shells: {
+            standard: { name: "Unguided rocket", fixedSpeed: 4.5, spread: () => 3, burn: 40, rplBoost: true },
+            cluster: { name: "Cluster rocket (8 bomblets)", fixedSpeed: 4.5, spread: () => 3, burn: 30, rplBoost: true, releaseTick: 31 }
+        }},
+        peeler: { name: "Peeler rocket", usesBarrels: false, shells: {
+            standard: { name: "Armor Peeler — handheld", fixedSpeed: 6, spread: () => 2.5, burn: 60, boost: 1.01 },
+            pod: { name: "Rocket pod", fixedSpeed: 6, spread: () => 2, burn: 60, boost: 1.01 }
+        }},
+        fire_spear: { name: "Fire Spear", usesBarrels: false, shells: {
+            standard: { name: "Fire Spear missile", fixedSpeed: 6, spread: () => 2, burn: 70, boost: 1.01 }
+        }},
         battle_cannon: {
             name: "Battle Cannon",
             usesBarrels: true,
@@ -79,6 +90,9 @@
 
         return {
             weaponId,
+            burn: shell.burn || 0,
+            boost: shell.rplBoost ? 1 + 0.02 * (rplInstalled ? 2 : 1) : (shell.boost || 1),
+            releaseTick: shell.releaseTick || 0,
             shellId,
             weaponName: weapon.name,
             shellName: shell.name,
@@ -99,6 +113,46 @@
         const yaw = normalizeSignedDegrees(degrees(Math.atan2(-dx, dz)));
         const bearing = normalizeBearing(degrees(Math.atan2(dx, -dz)));
         return { dx, dy, dz, horizontalRange, yaw, bearing };
+    }
+
+    const AIMER_YAW_LIMIT = 30.5;
+    const AIMER_PITCH_MIN = -21.5;
+    const AIMER_PITCH_MAX = 44.5;
+    const FACINGS = {
+        north: { label: "North (−Z)", yaw: -180 },
+        east: { label: "East (+X)", yaw: -90 },
+        south: { label: "South (+Z)", yaw: 0 },
+        west: { label: "West (−X)", yaw: 90 }
+    };
+
+    function getAimerAim(worldYaw, facingId = "auto", customYaw = 0) {
+        if (!Number.isFinite(worldYaw)) throw new Error("Target heading must be finite.");
+        let facing;
+        if (facingId === "auto") {
+            facing = Object.values(FACINGS).reduce((best, candidate) =>
+                Math.abs(normalizeSignedDegrees(worldYaw - candidate.yaw)) < Math.abs(normalizeSignedDegrees(worldYaw - best.yaw)) ? candidate : best);
+        } else if (facingId === "custom") {
+            if (!Number.isFinite(customYaw) || customYaw < -180 || customYaw > 180) throw new Error("Base world yaw must be between −180° and +180°.");
+            facing = { label: "Custom base", yaw: customYaw };
+        } else {
+            facing = FACINGS[facingId];
+            if (!facing) throw new Error("Select a valid launcher facing.");
+        }
+        const yaw = normalizeSignedDegrees(worldYaw - facing.yaw);
+        const inRange = Math.abs(yaw) <= AIMER_YAW_LIMIT + 1e-9;
+        return { facing: facing.label, baseYaw: facing.yaw, yaw, inRange,
+            setting: inRange ? Math.round(yaw * 2) / 2 : null };
+    }
+
+    function aimerPitchFromElevation(elevation, relativeYaw = 0) {
+        return degrees(Math.atan(Math.tan(radians(elevation)) / Math.cos(radians(relativeYaw))));
+    }
+
+    function getAimerPitch(elevation, relativeYaw, weaponId) {
+        const pitch = weaponId === "mortar" ? mortarSettingFromElevation(elevation, relativeYaw)
+            : aimerPitchFromElevation(elevation, relativeYaw);
+        const inRange = Number.isFinite(pitch) && pitch >= AIMER_PITCH_MIN - 1e-9 && pitch <= AIMER_PITCH_MAX + 1e-9;
+        return { pitch, inRange, setting: inRange ? Math.round(pitch * 2) / 2 : null };
     }
 
     // Warium stores tan(displayed pitch), adds 0.5, halves the horizontal
@@ -149,6 +203,7 @@
     }
 
     function estimateDispersion(options) {
+        const motion = options.motion || {};
         const geometry = options.geometry;
         const elevationRadians = options.elevationRadians;
         const speed = options.speed;
@@ -219,6 +274,14 @@
                 vx *= AIR_DRAG;
                 vy = vy * AIR_DRAG - GRAVITY;
                 vz *= AIR_DRAG;
+                const boost = tick <= (motion.burn || 0) ? motion.boost : 1;
+                vx *= boost; vy *= boost; vz *= boost;
+                if (tick === motion.releaseTick) {
+                    const childDeviation = MINECRAFT_SPREAD_SCALE * 12 * Math.hypot(vx, vy, vz);
+                    vx += childDeviation * (random() - random());
+                    vy += childDeviation * (random() - random());
+                    vz += childDeviation * (random() - random());
+                }
 
                 if (y < targetY - 512 && vy < 0) break;
             }
@@ -229,6 +292,7 @@
         misses.sort((a, b) => a - b);
         const medianMeters = percentile(misses, 0.5);
         return {
+            plane: "vertical target plane",
             medianMeters,
             p90Meters: percentile(misses, 0.9),
             percentError: medianMeters / slantRange * 100,
@@ -236,7 +300,7 @@
         };
     }
 
-    function simulateToRange(speed, elevationRadians, horizontalRange, targetDeltaY) {
+    function simulateToRange(speed, elevationRadians, horizontalRange, targetDeltaY, motion = {}) {
         if (!Number.isFinite(speed) || speed <= 0 || horizontalRange < 0) return null;
 
         let x = 0;
@@ -285,20 +349,23 @@
 
             vx *= AIR_DRAG;
             vy = vy * AIR_DRAG - GRAVITY;
+            const boost = tick <= (motion.burn || 0) ? motion.boost : 1;
+            vx *= boost;
+            vy *= boost;
 
             if (vx < 1e-10 && x < horizontalRange) return null;
         }
         return null;
     }
 
-    function evaluateAngle(speed, elevationRadians, geometry, launchOffset) {
+    function evaluateAngle(speed, elevationRadians, geometry, launchOffset, motion = {}) {
         const offsetHorizontal = launchOffset * Math.cos(elevationRadians);
         const offsetVertical = launchOffset * Math.sin(elevationRadians);
         const flightRange = geometry.horizontalRange - offsetHorizontal;
         const flightDeltaY = geometry.dy - offsetVertical;
         if (flightRange <= 1e-7) return null;
 
-        const simulation = simulateToRange(speed, elevationRadians, flightRange, flightDeltaY);
+        const simulation = simulateToRange(speed, elevationRadians, flightRange, flightDeltaY, motion);
         if (!simulation) return null;
         return {
             ...simulation,
@@ -309,7 +376,7 @@
         };
     }
 
-    function bisectRoot(speed, geometry, launchOffset, low, high, lowEval, highEval) {
+    function bisectRoot(speed, geometry, launchOffset, low, high, lowEval, highEval, motion = {}) {
         let lo = low;
         let hi = high;
         let loEval = lowEval;
@@ -317,7 +384,7 @@
 
         for (let iteration = 0; iteration < 70; iteration += 1) {
             const mid = (lo + hi) / 2;
-            const midEval = evaluateAngle(speed, mid, geometry, launchOffset);
+            const midEval = evaluateAngle(speed, mid, geometry, launchOffset, motion);
             if (!midEval) break;
             if (Math.abs(midEval.error) < 1e-9) return { angle: mid, evaluation: midEval };
 
@@ -331,17 +398,17 @@
         }
 
         const angle = (lo + hi) / 2;
-        return { angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset) || hiEval };
+        return { angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset, motion) || hiEval };
     }
 
-    function minimizeAbsoluteError(speed, geometry, launchOffset, low, high) {
+    function minimizeAbsoluteError(speed, geometry, launchOffset, low, high, motion = {}) {
         const ratio = (Math.sqrt(5) - 1) / 2;
         let a = low;
         let b = high;
         let c = b - ratio * (b - a);
         let d = a + ratio * (b - a);
-        let cEval = evaluateAngle(speed, c, geometry, launchOffset);
-        let dEval = evaluateAngle(speed, d, geometry, launchOffset);
+        let cEval = evaluateAngle(speed, c, geometry, launchOffset, motion);
+        let dEval = evaluateAngle(speed, d, geometry, launchOffset, motion);
 
         for (let i = 0; i < 50; i += 1) {
             const cError = cEval ? Math.abs(cEval.error) : Infinity;
@@ -351,22 +418,24 @@
                 d = c;
                 dEval = cEval;
                 c = b - ratio * (b - a);
-                cEval = evaluateAngle(speed, c, geometry, launchOffset);
+                cEval = evaluateAngle(speed, c, geometry, launchOffset, motion);
             } else {
                 a = c;
                 c = d;
                 cEval = dEval;
                 d = a + ratio * (b - a);
-                dEval = evaluateAngle(speed, d, geometry, launchOffset);
+                dEval = evaluateAngle(speed, d, geometry, launchOffset, motion);
             }
         }
 
         const angle = (a + b) / 2;
-        return { angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset) };
+        return { angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset, motion) };
     }
 
     function solveTarget(options) {
+        const motion = options.profile || {};
         const origin = options.origin;
+        if (![origin.x, origin.y, origin.z, options.target.x, options.target.y, options.target.z, options.speed].every(Number.isFinite) || options.speed <= 0) throw new Error("Coordinates and speed must be finite; speed must be positive.");
         const target = options.target;
         const speed = options.speed;
         const launchOffset = Math.max(0, options.launchOffset || 0);
@@ -384,16 +453,18 @@
             };
         }
 
-        const minimumAngle = radians(-89.5);
-        const maximumAngle = radians(89.5);
+        const fixedElevation = options.fixedElevation;
+        const minimumAngle = radians(fixedElevation === undefined ? -89.5 : fixedElevation);
+        const maximumAngle = radians(fixedElevation === undefined ? 89.5 : fixedElevation);
         const step = radians(0.1);
         const samples = [];
         const roots = [];
 
         for (let angle = minimumAngle; angle <= maximumAngle + 1e-10; angle += step) {
-            samples.push({ angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset) });
+            samples.push({ angle, evaluation: evaluateAngle(speed, angle, geometry, launchOffset, motion) });
         }
 
+        if (fixedElevation !== undefined && samples[0]?.evaluation) roots.push(samples[0]);
         for (let i = 1; i < samples.length; i += 1) {
             const previous = samples[i - 1];
             const current = samples[i];
@@ -411,7 +482,7 @@
                     previous.angle,
                     current.angle,
                     previous.evaluation,
-                    current.evaluation
+                    current.evaluation, motion
                 ));
             }
         }
@@ -425,7 +496,7 @@
             if (error <= Math.abs(before.evaluation.error)
                 && error <= Math.abs(after.evaluation.error)
                 && error < 0.05) {
-                const candidate = minimizeAbsoluteError(speed, geometry, launchOffset, before.angle, after.angle);
+                const candidate = minimizeAbsoluteError(speed, geometry, launchOffset, before.angle, after.angle, motion);
                 if (candidate.evaluation && Math.abs(candidate.evaluation.error) < 0.001) roots.push(candidate);
             }
         }
@@ -462,7 +533,7 @@
                 type: selectedRoots.length === 1 ? "only" : (index === 0 ? "low" : "high"),
                 elevation,
                 minecraftPitch: -elevation,
-                mortarPitch: weaponId === "mortar" ? mortarSettingFromElevation(elevation) : null,
+                mortarPitch: weaponId === "mortar" ? mortarSettingFromElevation(elevation, options.relativeYaw || 0) : null,
                 yaw: geometry.yaw,
                 bearing: geometry.bearing,
                 timeTicks: evaluation.timeTicks,
@@ -477,7 +548,7 @@
                     elevationRadians: rootResult.angle,
                     speed,
                     launchOffset,
-                    inaccuracy
+                    inaccuracy, motion
                 }),
                 muzzle,
                 points: shiftedPoints
@@ -485,6 +556,7 @@
         });
 
         return {
+            origin, target, fixedElevation,
             weaponId,
             inaccuracy,
             geometry,
@@ -503,6 +575,12 @@
             return { origin: raw, launchOffset: 0, description: "Exact projectile origin" };
         }
 
+        if (["ordinance", "peeler", "fire_spear"].includes(input.weaponId)) {
+            if (input.weaponId === "ordinance" && input.launchMode === "vertical") return {
+                origin: { x: raw.x + 0.5, y: raw.y + 3, z: raw.z + 0.5 }, launchOffset: 0
+            };
+            throw new Error("Use the exact projectile origin for a horizontal missile or hardpoint; its block offset depends on the mount.");
+        }
         if (input.weaponId === "mortar") {
             return {
                 origin: { x: raw.x + 0.5, y: raw.y + 3.0, z: raw.z + 0.5 },
@@ -527,6 +605,13 @@
         DISPERSION_SAMPLES,
         getProfile,
         getGeometry,
+        getAimerAim,
+        aimerPitchFromElevation,
+        AIMER_YAW_LIMIT,
+        AIMER_PITCH_MIN,
+        AIMER_PITCH_MAX,
+        getAimerPitch,
+        FACINGS,
         mortarElevationFromSetting,
         mortarSettingFromElevation,
         estimateDispersion,
