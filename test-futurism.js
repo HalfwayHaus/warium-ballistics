@@ -1,6 +1,11 @@
 const assert = require("node:assert/strict");
 const B = require("./ballistics");
 const D = require("./drop-range");
+const fs = require("node:fs");
+
+const page = fs.readFileSync(require.resolve("./index.html"), "utf8");
+assert.match(page, /id="barrels"[^>]*max="21"/);
+assert.match(page, /app\.js\?v=railgun-limits-2/);
 
 for (const [id, base, divisor, maxBarrels] of [["railgun_205", 8, 1.5, 21], ["railgun_60", 7, 1.25, 11], ["railgun_15", 8, 1, 6]]) {
     const one = B.getProfile(id, "penetrator", 1, false);

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Warium Ballistics Calculator</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=railgun-limits-2">
 </head>
 <body>
     <header class="app-header">
@@ -30,8 +30,8 @@
                         <select id="shell" name="shell"></select>
                     </label>
                     <label id="barrels-row">
-                        <span id="barrels-label">Barrel blocks (1–11)</span>
-                        <input id="barrels" name="barrels" type="number" min="1" max="11" step="1" value="4">
+                        <span id="barrels-label">Barrel blocks</span>
+                        <input id="barrels" name="barrels" type="number" min="1" max="21" step="1" value="4">
                     </label>
                     <label>Launcher facing
                         <select id="launcher-facing" name="launcherFacing">
@@ -187,9 +187,9 @@
         Derived from Warium 1.3.2, Futurism 0.0.1 and Ritchie's Projectile Library 2.1.1 for Minecraft 1.20.1.
     </footer>
 
-    <script src="ballistics.js"></script>
-    <script src="mission.js"></script>
-    <script src="bluemap.js"></script>
-    <script src="app.js"></script>
+    <script src="ballistics.js?v=railgun-limits-2"></script>
+    <script src="mission.js?v=railgun-limits-2"></script>
+    <script src="bluemap.js?v=railgun-limits-2"></script>
+    <script src="app.js?v=railgun-limits-2"></script>
 </body>
 </html>
