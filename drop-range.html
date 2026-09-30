@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Futurism Drop Range | Warium Ballistics</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div><p class="eyebrow">FUTURISM 0.0.1</p><h1>Drop Range</h1></div>
+        <nav class="page-nav"><a href="index.html">Firing solutions</a><a href="drop-range.html" aria-current="page">Drop range</a></nav>
+    </header>
+    <main class="drop-workspace">
+        <section class="control-panel">
+            <h2>Release setup</h2>
+            <form id="drop-form">
+                <label>Munition<select id="munition" required></select></label>
+                <label>Release Y coordinate<input id="release-y" type="number" step="any" value="256" required></label>
+                <label>Target Y coordinate<input id="target-y" type="number" step="any" value="64" required></label>
+                <label>Initial bomb release speed (blocks/tick)<input id="release-speed" type="number" step="any" min="0" max="20" value="0.2" required></label>
+                <p class="field-note">Futurism bomb fins launch at 0.2 blocks/tick. Change this only if your release setup adds velocity. Powered missiles use their scripted launch speed.</p>
+                <button class="calculate-button" type="submit">Calculate maximum modeled reach</button>
+            </form>
+        </section>
+        <section class="results-panel" aria-live="polite">
+            <p class="eyebrow">RELEASE DISTANCE</p><h2 id="range-title">Select a munition</h2>
+            <div class="drop-result"><strong id="range-value">—</strong><span id="range-unit">blocks from target</span></div>
+            <p class="status-message" id="range-note">Enter a release altitude and target altitude. This page reports a modeled reach envelope, not a guaranteed hit.</p>
+            <p class="field-note" id="lock-note"></p>
+            <details class="model-details"><summary>How this estimate works</summary>
+                <p>Bombs use Futurism’s 0.2 block/tick release, 20-tick free-flight period, 0.05 steering factor and Minecraft arrow gravity/drag. Glide fins also offset horizontal drag. Powered missiles use their script’s initial velocity, acceleration threshold and powered tick count, then a gravity-only coast. The powered result assumes a straight level route at release altitude and is therefore an optimistic envelope.</p>
+                <p>Target acquisition, terrain, collisions, missile turning, launch orientation, ship motion and unloaded chunks are not simulated. IR, radar and optical weapons additionally require a valid lock. The loitering drone is pilot-controlled and has no fixed range from altitude alone.</p>
+            </details>
+        </section>
+    </main>
+    <footer>Derived from Futurism 0.0.1 for Minecraft 1.20.1.</footer>
+    <script src="drop-range.js"></script>
+    <script>
+    (() => {
+        const D = window.FuturismDropRange;
+        const select = document.getElementById("munition");
+        const groups = new Map();
+        for (const [id, item] of Object.entries(D.MUNITIONS)) {
+            if (!groups.has(item.group)) {
+                const group = document.createElement("optgroup"); group.label = item.group;
+                groups.set(item.group, group); select.appendChild(group);
+            }
+            const option = document.createElement("option"); option.value = id; option.textContent = item.name;
+            groups.get(item.group).appendChild(option);
+        }
+        const form = document.getElementById("drop-form");
+        function update() {
+            try {
+                const result = D.calculate(select.value, Number(document.getElementById("release-y").value), Number(document.getElementById("target-y").value), Number(document.getElementById("release-speed").value));
+                document.getElementById("range-title").textContent = result.munition.name;
+                document.getElementById("range-value").textContent = result.distance === null ? "Variable" : Math.floor(result.distance).toLocaleString();
+                document.getElementById("range-unit").textContent = result.distance === null ? "pilot-dependent" : "blocks from target · modeled upper reach";
+                document.getElementById("range-note").textContent = result.note;
+                document.getElementById("range-note").className = "status-message";
+                document.getElementById("lock-note").textContent = result.munition.lock ? `Requires ${result.munition.lock} target acquisition. The distance is not a lock-range guarantee.` : "";
+            } catch (error) {
+                document.getElementById("range-note").textContent = error.message;
+                document.getElementById("range-note").className = "status-message error";
+                document.getElementById("range-value").textContent = "—";
+            }
+        }
+        form.addEventListener("submit", event => { event.preventDefault(); update(); });
+        select.addEventListener("change", update);
+        update();
+    })();
+    </script>
+</body>
+</html>

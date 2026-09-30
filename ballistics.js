@@ -43,6 +43,28 @@
                 explosive: { name: "HE / gas / incendiary", baseSpeed: 3.0, spread: (barrels) => 14 / (barrels * 1.5) }
             }
         },
+        railgun_205: { name: "Futurism 205 mm railgun", usesBarrels: true, shells: {
+            penetrator: { name: "205 mm penetrator", speed: (n) => 8 + n / 1.5, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 800 }
+        }},
+        railgun_60: { name: "Futurism 60 mm railgun", usesBarrels: true, shells: {
+            penetrator: { name: "60 mm penetrator", speed: (n) => 7 + n / 1.25, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 800 },
+            scatter: { name: "60 mm nine-shot load", speed: (n) => 7 + n / 1.25, spread: (n) => 6 / n, lift: 0.04, maxTicks: 100 }
+        }},
+        railgun_15: { name: "Futurism 15 mm railgun", usesBarrels: true, shells: {
+            penetrator: { name: "15 mm penetrator", speed: (n) => 8 + n, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 100 }
+        }},
+        large_ordinance: { name: "Futurism large ordinance", usesBarrels: false, shells: {
+            rocket: { name: "Heavy unguided rocket", fixedSpeed: 4.5, spread: () => 3, burn: 450, acceleration: 0.2, speedCap: 10, guided: false },
+            cruise: { name: "Cruise missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            atomic_cruise: { name: "Atomic cruise missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            cluster: { name: "Cluster missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            cluster_mine: { name: "Cluster mine missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            radar: { name: "Radar missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            anti_radiation: { name: "Anti-radiation missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            infrared: { name: "Infrared missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            infrared_loft: { name: "IR lofting missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true },
+            optical: { name: "Optical missile (unguided preview)", fixedSpeed: 4.5, spread: () => 3, guided: true }
+        }},
         mortar: {
             name: "Mortar",
             usesBarrels: false,
@@ -84,15 +106,21 @@
 
         const safeBarrels = weapon.usesBarrels ? clamp(Math.round(barrels), 1, 11) : 0;
         const multiplier = weapon.usesBarrels && rplInstalled ? 2.0 : 1.0;
-        const speed = shell.fixedSpeed !== undefined
+        const speed = (shell.speed ? shell.speed(safeBarrels) : shell.fixedSpeed !== undefined
             ? shell.fixedSpeed
-            : (shell.baseSpeed + safeBarrels / 1.25) * multiplier;
+            : shell.baseSpeed + safeBarrels / 1.25) * multiplier;
 
         return {
             weaponId,
             burn: shell.burn || 0,
             boost: shell.rplBoost ? 1 + 0.02 * (rplInstalled ? 2 : 1) : (shell.boost || 1),
             releaseTick: shell.releaseTick || 0,
+            acceleration: shell.acceleration || 0,
+            speedCap: shell.speedCap || 0,
+            gravity: shell.gravity,
+            lift: shell.lift || 0,
+            maxTicks: shell.maxTicks,
+            guided: Boolean(shell.guided),
             shellId,
             weaponName: weapon.name,
             shellName: shell.name,
@@ -246,7 +274,7 @@
             let closestDistance = Math.hypot(targetRange, targetY);
             let miss = null;
 
-            for (let tick = 1; tick <= MAX_TICKS; tick += 1) {
+            for (let tick = 1; tick <= (motion.maxTicks || MAX_TICKS); tick += 1) {
                 const nextX = x + vx;
                 const nextY = y + vy;
                 const nextZ = z + vz;
@@ -272,10 +300,15 @@
                 z = nextZ;
                 previousForward = nextForward;
                 vx *= AIR_DRAG;
-                vy = vy * AIR_DRAG - GRAVITY;
+                vy = vy * AIR_DRAG - (motion.gravity ?? GRAVITY);
+                if (motion.lift && Math.hypot(vx, vy, vz) >= 2) vy += motion.lift;
                 vz *= AIR_DRAG;
                 const boost = tick <= (motion.burn || 0) ? motion.boost : 1;
                 vx *= boost; vy *= boost; vz *= boost;
+                if (tick <= (motion.burn || 0) && motion.acceleration && Math.hypot(vx, vy, vz) < motion.speedCap) {
+                    const factor = 1 + motion.acceleration / Math.max(1e-9, Math.hypot(vx, vy, vz));
+                    vx *= factor; vy *= factor; vz *= factor;
+                }
                 if (tick === motion.releaseTick) {
                     const childDeviation = MINECRAFT_SPREAD_SCALE * 12 * Math.hypot(vx, vy, vz);
                     vx += childDeviation * (random() - random());
@@ -323,7 +356,7 @@
 
         if (vx <= 1e-10) return null;
 
-        for (let tick = 1; tick <= MAX_TICKS; tick += 1) {
+        for (let tick = 1; tick <= (motion.maxTicks || MAX_TICKS); tick += 1) {
             const nextX = x + vx;
             const nextY = y + vy;
 
@@ -348,10 +381,15 @@
             if (tick < 240 || tick % 3 === 0) points.push({ x, y });
 
             vx *= AIR_DRAG;
-            vy = vy * AIR_DRAG - GRAVITY;
+            vy = vy * AIR_DRAG - (motion.gravity ?? GRAVITY);
+            if (motion.lift && Math.hypot(vx, vy) >= 2) vy += motion.lift;
             const boost = tick <= (motion.burn || 0) ? motion.boost : 1;
             vx *= boost;
             vy *= boost;
+            if (tick <= (motion.burn || 0) && motion.acceleration && Math.hypot(vx, vy) < motion.speedCap) {
+                const factor = 1 + motion.acceleration / Math.max(1e-9, Math.hypot(vx, vy));
+                vx *= factor; vy *= factor;
+            }
 
             if (vx < 1e-10 && x < horizontalRange) return null;
         }
@@ -575,7 +613,7 @@
             return { origin: raw, launchOffset: 0, description: "Exact projectile origin" };
         }
 
-        if (["ordinance", "peeler", "fire_spear"].includes(input.weaponId)) {
+        if (["ordinance", "large_ordinance", "peeler", "fire_spear"].includes(input.weaponId)) {
             if (input.weaponId === "ordinance" && input.launchMode === "vertical") return {
                 origin: { x: raw.x + 0.5, y: raw.y + 3, z: raw.z + 0.5 }, launchOffset: 0
             };
@@ -591,8 +629,8 @@
 
         return {
             origin: { x: raw.x + 0.5, y: raw.y + 0.5, z: raw.z + 0.5 },
-            launchOffset: clamp(Math.round(input.barrels), 1, 11) + 1.5,
-            description: "Breech block position with Warium barrel-length muzzle offset"
+            launchOffset: clamp(Math.round(input.barrels), 1, 11) + (input.weaponId.startsWith("railgun_") ? 1 : 1.5),
+            description: "Breech block position with barrel-length muzzle offset"
         };
     }
 

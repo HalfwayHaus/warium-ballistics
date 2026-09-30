@@ -12,6 +12,7 @@
             <p class="eyebrow">WARIUM 1.3.2</p>
             <h1>Ballistics Calculator</h1>
         </div>
+        <nav class="page-nav"><a href="index.html" aria-current="page">Firing solutions</a><a href="drop-range.html">Drop range</a></nav>
         <div class="runtime-state" id="runtime-state">RPL 2.1.1 profile</div>
     </header>
 
@@ -171,7 +172,7 @@
             <details class="model-details">
                 <summary>Calculation model</summary>
                 <div class="details-grid">
-                    <p><strong>Motion:</strong> Minecraft 1.20.1 AbstractArrow order, with position advanced before 0.99 air drag and 0.05 downward velocity are applied each tick.</p>
+                    <p><strong>Motion:</strong> Minecraft 1.20.1 AbstractArrow order, with position advanced before 0.99 air drag and 0.05 downward velocity are applied each tick. Futurism railgun flight adds 0.04 upward velocity while moving at least 2 blocks/tick.</p>
                     <p><strong>RPL:</strong> Warium doubles battle-cannon and artillery launch velocity when Ritchie's Projectile Library is loaded. Mortar launch speed remains 5 blocks/tick.</p>
                     <p><strong>Mortars:</strong> The displayed mortar pitch is solved through Warium's actual transformed launch vector. A 0-degree mortar setting produces approximately 45 degrees of true elevation when fired on its centerline.</p>
                     <p><strong>Error:</strong> Median and 90th-percentile miss at the vertical target plane use 800 deterministic trials of Minecraft's triangular projectile spread at the selected launch inaccuracy, including a second random perturbation for cluster bomblets. These are not horizontal ground-impact radii.</p>

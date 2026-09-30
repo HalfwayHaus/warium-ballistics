@@ -163,7 +163,7 @@ function createApp({fetcher=fetchPublic, now=Date.now} = {}) {
             if(req.method!=="GET" && req.method!=="HEAD")return send(res,405,{error:"Method not allowed."});
             const name=u.pathname==="/"?"index.html":decodeURIComponent(u.pathname.slice(1));
             // Never serve repository metadata, JARs or server implementation/config files.
-            const allowed=/^(index\.html|rocket-missile-calculator\.html|styles\.css|app\.js|ballistics\.js|mission\.js|bluemap\.js|README\.md|BLUEMAP\.md|PHYSICS\.md)$/;
+    const allowed=/^(index\.html|drop-range\.html|drop-range\.js|rocket-missile-calculator\.html|styles\.css|app\.js|ballistics\.js|mission\.js|bluemap\.js|README\.md|BLUEMAP\.md|PHYSICS\.md)$/;
             if(!allowed.test(name))return send(res,404,{error:"Not found."});
             const body=await fs.readFile(path.join(ROOT,name));
             return send(res,200,req.method==="HEAD"?"":body,MIME[path.extname(name)]);

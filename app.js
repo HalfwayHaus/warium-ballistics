@@ -58,7 +58,7 @@
     function updateNotes() {
         document.getElementById("base-yaw-row").hidden = document.getElementById("launcher-facing").value !== "custom";
         const weapon = B.WEAPONS[weaponSelect.value];
-        document.getElementById("ordinance-options").hidden = weaponSelect.value !== "ordinance";
+        document.getElementById("ordinance-options").hidden = !["ordinance", "large_ordinance"].includes(weaponSelect.value);
         document.getElementById("vertical-vector-row").hidden = document.getElementById("launch-mode").value !== "vertical";
         const rpl = selectedRuntime();
         runtimeState.textContent = rpl ? "RPL 2.1.1 profile" : "No-RPL slower profile";
@@ -68,6 +68,8 @@
                 : "Uses Warium's slower base launch speed.")
             : weaponSelect.value === "ordinance"
                 ? "Ordinance starts at 4.5 blocks/tick. RPL changes powered boost from 1.02 to 1.04 per tick."
+                : weaponSelect.value === "large_ordinance"
+                    ? "Futurism large ordinance starts at 4.5 blocks/tick. Guided variants are shown as unguided launch previews; use their programmed target or seeker for actual flight."
                 : "Launch speed and powered boost for this profile do not change with RPL.";
 
         if (referenceMode.value === "muzzle") {
@@ -271,7 +273,7 @@
             const aim = B.getAimerAim(geometry.yaw, facingId, facingId === "custom" ? numberValue("base-yaw") : 0);
             if (geometry.horizontalRange > 1e-6 && !aim.inRange) throw new Error(
                 `${aim.facing} would require ${signed(aim.yaw, 2)}° yaw, outside Warium’s ±30.5° Aimer range. Reorient the launcher toward the target, then select its actual facing (or custom base yaw for a rotated mount).`);
-            const vertical = weaponId === "ordinance" && document.getElementById("launch-mode").value === "vertical";
+            const vertical = ["ordinance", "large_ordinance"].includes(weaponId) && document.getElementById("launch-mode").value === "vertical";
             const magnitude = vertical ? numberValue("vertical-vector") : 1;
             if (magnitude < 0 || magnitude > 10) throw new Error("Horizontal vector magnitude must be between 0 and 10.");
             if (vertical && magnitude === 0) throw new Error("A straight-up no-lock launch cannot solve an offset target. Its nominal X/Z stays at the launch point; yaw is undefined. Use the retained horizontal magnitude from your floor mount.");
@@ -310,6 +312,7 @@
                     ? " Orient the mortar to the listed yaw first; its pitch setting accounts for Warium's transformed launch vector."
                     : "";
                 status.textContent = `${countText}${mortarNote} Face the launcher ${aim.facing}; use the Aimer settings below. Trajectories use the exact aim; 0.5° control steps introduce additional rounding error. Error estimates measure random miss at the vertical target plane.`;
+                if (profile.guided) status.textContent += " This guided Futurism variant is an unguided launch preview only; the plotted arc does not predict its programmed or seeker-guided impact.";
                 if (drawable.solutions.length < result.solutions.length) {
                     status.className = "status-message error";
                     status.textContent = drawable.solutions.length
