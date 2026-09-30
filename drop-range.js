@@ -18,11 +18,13 @@
         xl_cruise: { name: "Extra-large cruise missile", group: "Cruise missiles", kind: "powered", speed: 4.5, cap: 4, acceleration: 0.1, delay: 40, ticks: 2200 },
         atomic_cruise: { name: "Atomic cruise missile", group: "Cruise missiles", kind: "powered", speed: 4.5, cap: 4, acceleration: 0.1, delay: 40, ticks: 2200 },
         xl_rocket: { name: "Extra-large rocket", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.2, ticks: 450 },
+        atomic_rocket: { name: "Atomic Tammy rocket", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.2, ticks: 450 },
         xl_cluster: { name: "Large cluster missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.2, ticks: 450 },
         xl_cluster_mine: { name: "Large cluster mine missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.2, ticks: 450 },
         xl_ir: { name: "Extra-large IR missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 15, acceleration: 0.2, ticks: 260, lock: "IR" },
         xl_ir_loft: { name: "Extra-large IR lofting missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 12, acceleration: 0.2, ticks: 300, lock: "IR" },
         xl_radar: { name: "Extra-large radar missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 15, acceleration: 0.2, ticks: 260, lock: "radar" },
+        radar_missile: { name: "Radar missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 15, acceleration: 0.2, ticks: 260, lock: "radar" },
         xl_optical: { name: "Large optical missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 7, acceleration: 0.1, ticks: 450, lock: "optical" },
         anti_radiation: { name: "Anti-radiation missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 6, acceleration: 0.1, ticks: 320, lock: "radar emitter" },
         medium_ir: { name: "Medium IR missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.2, ticks: 140, lock: "IR" },
@@ -30,6 +32,8 @@
         medium_radar: { name: "Medium radar missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.1, ticks: 140, lock: "radar" },
         medium_radar_extended: { name: "Medium extended-range radar missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 10, acceleration: 0.1, ticks: 220, lock: "radar" },
         medium_optical: { name: "Medium optical missile", group: "Rockets and missiles", kind: "powered", speed: 4.5, cap: 4, acceleration: 0.1, ticks: 350, lock: "optical" },
+        conventional_srbm: { name: "Conventional SRBM", group: "Rockets and missiles", kind: "powered", speed: 1, cap: 12, acceleration: 0.1, ticks: 1700 },
+        ballistic_interceptor: { name: "Ballistic interceptor", group: "Rockets and missiles", kind: "powered", speed: 1, cap: 16, acceleration: 0.15, ticks: 1000, lock: "ballistic target" },
         loitering_drone: { name: "Loitering munition drone", group: "Drone", kind: "drone" }
     };
 
