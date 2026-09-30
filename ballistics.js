@@ -29,6 +29,7 @@
         battle_cannon: {
             name: "Battle Cannon",
             usesBarrels: true,
+            maxBarrels: 11,
             shells: {
                 ap: { name: "AP shell", baseSpeed: 3.3, spread: (barrels) => 8 / (barrels * 2) },
                 solid: { name: "Solid shell", baseSpeed: 3.2, spread: (barrels) => 8 / (barrels * 2) },
@@ -38,19 +39,20 @@
         artillery: {
             name: "Artillery",
             usesBarrels: true,
+            maxBarrels: 11,
             shells: {
                 solid: { name: "Solid / AP shell", baseSpeed: 3.2, spread: (barrels) => 10 / (barrels * 1.5) },
                 explosive: { name: "HE / gas / incendiary", baseSpeed: 3.0, spread: (barrels) => 14 / (barrels * 1.5) }
             }
         },
-        railgun_205: { name: "Futurism 205 mm railgun", usesBarrels: true, shells: {
+        railgun_205: { name: "Futurism 205 mm railgun", usesBarrels: true, maxBarrels: 21, shells: {
             penetrator: { name: "205 mm penetrator", speed: (n) => 8 + n / 1.5, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 800 }
         }},
-        railgun_60: { name: "Futurism 60 mm railgun", usesBarrels: true, shells: {
+        railgun_60: { name: "Futurism 60 mm railgun", usesBarrels: true, maxBarrels: 11, shells: {
             penetrator: { name: "60 mm penetrator", speed: (n) => 7 + n / 1.25, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 800 },
             scatter: { name: "60 mm nine-shot load", speed: (n) => 7 + n / 1.25, spread: (n) => 6 / n, lift: 0.04, maxTicks: 100 }
         }},
-        railgun_15: { name: "Futurism 15 mm railgun", usesBarrels: true, shells: {
+        railgun_15: { name: "Futurism 15 mm railgun", usesBarrels: true, maxBarrels: 6, shells: {
             penetrator: { name: "15 mm penetrator", speed: (n) => 8 + n, spread: (n) => 4 / (n * 3), lift: 0.04, maxTicks: 100 }
         }},
         large_ordinance: { name: "Futurism large ordinance", usesBarrels: false, shells: {
@@ -106,7 +108,7 @@
         const shell = weapon.shells[shellId];
         if (!shell) throw new Error("Unknown shell profile.");
 
-        const safeBarrels = weapon.usesBarrels ? clamp(Math.round(barrels), 1, 11) : 0;
+        const safeBarrels = weapon.usesBarrels ? clamp(Math.round(barrels), 1, weapon.maxBarrels) : 0;
         const multiplier = weapon.usesBarrels && rplInstalled ? 2.0 : 1.0;
         const speed = (shell.speed ? shell.speed(safeBarrels) : shell.fixedSpeed !== undefined
             ? shell.fixedSpeed
@@ -631,7 +633,7 @@
 
         return {
             origin: { x: raw.x + 0.5, y: raw.y + 0.5, z: raw.z + 0.5 },
-            launchOffset: clamp(Math.round(input.barrels), 1, 11) + (input.weaponId.startsWith("railgun_") ? 1 : 1.5),
+            launchOffset: clamp(Math.round(input.barrels), 1, WEAPONS[input.weaponId].maxBarrels) + (input.weaponId.startsWith("railgun_") ? 1 : 1.5),
             description: "Breech block position with barrel-length muzzle offset"
         };
     }

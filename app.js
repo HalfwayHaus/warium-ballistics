@@ -48,6 +48,11 @@
         }
         if ([...shellSelect.options].some((item) => item.value === previous)) shellSelect.value = previous;
         barrelsRow.hidden = !weapon.usesBarrels;
+        if (weapon.usesBarrels) {
+            barrelsInput.max = String(weapon.maxBarrels);
+            document.getElementById("barrels-label").textContent = `Barrel blocks (1–${weapon.maxBarrels})`;
+            if (Number(barrelsInput.value) > weapon.maxBarrels) barrelsInput.value = String(weapon.maxBarrels);
+        }
         updateNotes();
     }
 
@@ -248,8 +253,9 @@
         try {
             const weaponId = weaponSelect.value;
             const barrels = Number(barrelsInput.value);
-            if (B.WEAPONS[weaponId].usesBarrels && (!Number.isInteger(barrels) || barrels < 1 || barrels > 11)) {
-                throw new Error("Barrel blocks must be a whole number from 1 to 11.");
+            const maxBarrels = B.WEAPONS[weaponId].maxBarrels;
+            if (B.WEAPONS[weaponId].usesBarrels && (!Number.isInteger(barrels) || barrels < 1 || barrels > maxBarrels)) {
+                throw new Error(`Barrel blocks must be a whole number from 1 to ${maxBarrels} for this weapon.`);
             }
 
             const inputPosition = {

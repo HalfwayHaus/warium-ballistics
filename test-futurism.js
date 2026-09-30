@@ -2,13 +2,15 @@ const assert = require("node:assert/strict");
 const B = require("./ballistics");
 const D = require("./drop-range");
 
-for (const [id, base, divisor] of [["railgun_205", 8, 1.5], ["railgun_60", 7, 1.25], ["railgun_15", 8, 1]]) {
+for (const [id, base, divisor, maxBarrels] of [["railgun_205", 8, 1.5, 21], ["railgun_60", 7, 1.25, 11], ["railgun_15", 8, 1, 6]]) {
     const one = B.getProfile(id, "penetrator", 1, false);
-    const eleven = B.getProfile(id, "penetrator", 11, false);
+    const maximum = B.getProfile(id, "penetrator", maxBarrels, false);
+    assert.equal(B.WEAPONS[id].maxBarrels, maxBarrels);
     assert.ok(Math.abs(one.speed - (base + 1 / divisor)) < 1e-9);
-    assert.ok(Math.abs(eleven.speed - (base + 11 / divisor)) < 1e-9);
-    assert.equal(B.getProfile(id, "penetrator", 11, true).speed, eleven.speed * 2);
-    assert.ok(eleven.inaccuracy < one.inaccuracy);
+    assert.ok(Math.abs(maximum.speed - (base + maxBarrels / divisor)) < 1e-9);
+    assert.equal(B.getProfile(id, "penetrator", maxBarrels, true).speed, maximum.speed * 2);
+    assert.ok(maximum.inaccuracy < one.inaccuracy);
+    assert.equal(B.resolveReferencePosition({weaponId:id, referenceMode:"breech", x:0, y:64, z:0, barrels:maxBarrels}).launchOffset, maxBarrels + 1);
     assert.equal(one.lift, 0.04);
 }
 assert.equal(B.getProfile("railgun_60", "scatter", 4, false).inaccuracy, 1.5);
