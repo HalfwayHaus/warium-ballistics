@@ -64,8 +64,8 @@
         runtimeState.textContent = rpl ? "RPL 2.1.1 profile" : "No-RPL slower profile";
         runtimeNote.textContent = weapon.usesBarrels
             ? (rpl
-                ? "Warium applies its 2x launch-speed multiplier to this weapon."
-                : "Uses Warium's slower base launch speed.")
+                ? "Ritchie's Projectile Library applies a 2x launch-speed multiplier to this weapon."
+                : "Uses the weapon's slower base launch speed.")
             : weaponSelect.value === "ordinance"
                 ? "Ordinance starts at 4.5 blocks/tick. RPL changes powered boost from 1.02 to 1.04 per tick."
                 : weaponSelect.value === "large_ordinance"
